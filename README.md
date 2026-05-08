@@ -96,3 +96,35 @@ Luego invocar:
 ```txt
 Usa la skill lafhia-n8n-agent para auditar el flujo Lafhia-Chatwoot.
 ```
+
+## Uso como plugin Codex instalable
+
+El repo incluye un plugin instalable:
+
+```txt
+plugins/lafher-chatbot
+```
+
+El plugin expone el agente como `@lafher_chatbot` en la interfaz y agrega una skill llamada `lafher-chatbot`.
+Desde cualquier equipo con Codex, instalar el plugin desde este repo y configurar el token solo en el entorno local cuando se requieran acciones protegidas.
+
+Invocaciones naturales:
+
+```txt
+@lafher_chatbot audita el flujo Lafhia
+@lafher_chatbot revisa el historial
+@lafher_chatbot guarda un snapshot seguro
+@lafher_chatbot aplica el parche de silencio si hace falta
+```
+
+Comandos directos:
+
+```powershell
+node plugins/lafher-chatbot/skills/lafher-chatbot/scripts/lafher_agent_client.mjs audit
+
+$env:LAFHER_AGENT_ADMIN_TOKEN = "<admin token>"
+node plugins/lafher-chatbot/skills/lafher-chatbot/scripts/lafher_agent_client.mjs history
+Remove-Item Env:LAFHER_AGENT_ADMIN_TOKEN
+```
+
+El plugin no guarda secretos. Usa la API global en Railway y solo requiere token local para historial, snapshots, limpieza o cambios autorizados.

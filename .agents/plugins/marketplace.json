@@ -1,0 +1,20 @@
+{
+  "name": "humanio-agents",
+  "interface": {
+    "displayName": "Humanio Agents"
+  },
+  "plugins": [
+    {
+      "name": "lafher-chatbot",
+      "source": {
+        "source": "local",
+        "path": "./plugins/lafher-chatbot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

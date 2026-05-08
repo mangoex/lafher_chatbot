@@ -1,0 +1,29 @@
+{
+  "name": "lafher-chatbot",
+  "version": "0.1.0",
+  "description": "Installable Codex plugin for operating the global LAFHER/LAFHIA n8n workflow agent.",
+  "author": {
+    "name": "Humanio / LAFHER",
+    "url": "https://github.com/mangoex"
+  },
+  "homepage": "https://github.com/mangoex/lafher_chatbot",
+  "repository": "https://github.com/mangoex/lafher_chatbot",
+  "license": "UNLICENSED",
+  "keywords": ["lafher", "lafhia", "n8n", "chatwoot", "workflow", "agent"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "@lafher_chatbot",
+    "shortDescription": "Audita y opera el flujo LAFHER/LAFHIA desde Codex.",
+    "longDescription": "Complemento instalable para invocar el agente global de LAFHER/LAFHIA, auditar el workflow de n8n, revisar historial, guardar snapshots y aplicar cambios seguros autorizados.",
+    "developerName": "Humanio / LAFHER",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://github.com/mangoex/lafher_chatbot",
+    "defaultPrompt": [
+      "@lafher_chatbot audita el flujo Lafhia",
+      "@lafher_chatbot revisa el historial",
+      "@lafher_chatbot guarda un snapshot seguro"
+    ],
+    "brandColor": "#0F766E"
+  }
+}
