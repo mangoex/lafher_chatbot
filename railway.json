@@ -7,8 +7,9 @@
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "cronSchedule": "0 14 * * *",
-    "startCommand": "npm run daily:audit",
+    "startCommand": "npm start",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 100,
     "sleepApplication": false,
     "useLegacyStacker": false,
     "ipv6EgressEnabled": false,
@@ -17,6 +18,6 @@
         "numReplicas": 1
       }
     },
-    "restartPolicyType": "NEVER"
+    "restartPolicyType": "ON_FAILURE"
   }
 }
