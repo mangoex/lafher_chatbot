@@ -56,6 +56,7 @@ Common commands:
 $env:N8N_API_KEY = "<api key>"
 node "C:\Users\Miguel Gonzalez\.codex\skills\lafhia-n8n-agent\scripts\lafhia_n8n_client.mjs" fetch --out "$env:TEMP\lafhia-before.json"
 node "C:\Users\Miguel Gonzalez\.codex\skills\lafhia-n8n-agent\scripts\lafhia_n8n_client.mjs" audit-silence --file "$env:TEMP\lafhia-before.json"
+node "C:\Users\Miguel Gonzalez\.codex\skills\lafhia-n8n-agent\scripts\lafhia_n8n_client.mjs" audit-workflow --file "$env:TEMP\lafhia-before.json"
 node "C:\Users\Miguel Gonzalez\.codex\skills\lafhia-n8n-agent\scripts\lafhia_n8n_client.mjs" apply-silence-patch
 Remove-Item Env:N8N_API_KEY
 ```
@@ -86,4 +87,3 @@ Read `references/workflow-reference.md` when:
    - only approved node(s) and connection source(s) changed,
    - target behavior is present.
 8. Tell the user what changed and what did not change.
-

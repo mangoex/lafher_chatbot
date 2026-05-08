@@ -11,6 +11,7 @@ function usage() {
   console.log(`Usage:
   node lafhia_n8n_client.mjs fetch [--out file]
   node lafhia_n8n_client.mjs audit-silence --file workflow.json
+  node lafhia_n8n_client.mjs audit-workflow --file workflow.json
   node lafhia_n8n_client.mjs patch-silence --file workflow.json --out patched.json
   node lafhia_n8n_client.mjs apply-silence-patch
 
@@ -116,6 +117,113 @@ function auditSilence(workflow) {
   };
 }
 
+function buildGraph(workflow) {
+  const nodes = workflow.nodes || [];
+  const nodeNames = new Set(nodes.map((node) => node.name));
+  const incoming = Object.fromEntries(nodes.map((node) => [node.name, 0]));
+  const outgoing = Object.fromEntries(nodes.map((node) => [node.name, 0]));
+  const edges = [];
+
+  for (const [source, outputs] of Object.entries(workflow.connections || {})) {
+    for (const [outputType, groups] of Object.entries(outputs || {})) {
+      if (outputType !== 'main') continue;
+      (groups || []).forEach((group, outputIndex) => {
+        (group || []).forEach((edge) => {
+          edges.push({ from: source, output: outputIndex, to: edge.node, input: edge.index ?? 0 });
+          outgoing[source] = (outgoing[source] || 0) + 1;
+          incoming[edge.node] = (incoming[edge.node] || 0) + 1;
+        });
+      });
+    }
+  }
+
+  return {
+    incoming,
+    outgoing,
+    edges,
+    missingTargets: edges.filter((edge) => !nodeNames.has(edge.to)),
+    missingSources: Object.keys(workflow.connections || {}).filter((source) => !nodeNames.has(source)),
+  };
+}
+
+function collectPromptLabels(workflow) {
+  const promptNode = workflow.nodes?.find((node) => node.name === 'Preparar prompt');
+  const code = promptNode?.parameters?.jsCode || '';
+  const labels = [...code.matchAll(/LABEL:([a-zA-Z0-9_-]+)/g)].map((match) => match[1]);
+  return {
+    labels: [...new Set(labels)],
+    counts: labels.reduce((acc, label) => {
+      acc[label] = (acc[label] || 0) + 1;
+      return acc;
+    }, {}),
+  };
+}
+
+function collectExternalServices(workflow) {
+  const services = new Set();
+  for (const node of workflow.nodes || []) {
+    const blob = JSON.stringify(node.parameters || {});
+    if (blob.includes('chatwoot-production-4e8e.up.railway.app')) services.add('Chatwoot');
+    if (blob.includes('sagi.lafher.mx')) services.add('SAGI');
+    if (blob.includes('openrouter.ai')) services.add('OpenRouter');
+    if (blob.includes('api.groq.com')) services.add('Groq transcription');
+    if (blob.includes('api.resend.com')) services.add('Resend email');
+    if (blob.includes('html2pdf.app')) services.add('html2pdf');
+    if (node.type === 'n8n-nodes-base.googleDrive') services.add('Google Drive');
+    if (node.type === 'n8n-nodes-base.whatsApp') services.add('WhatsApp Meta');
+  }
+  return [...services].sort();
+}
+
+function auditWorkflow(workflow) {
+  const graph = buildGraph(workflow);
+  const silence = auditSilence(workflow);
+  const promptLabels = collectPromptLabels(workflow);
+  const nodeNames = new Set((workflow.nodes || []).map((node) => node.name));
+  const terminalNodes = (workflow.nodes || []).filter((node) => (graph.outgoing[node.name] || 0) === 0).map((node) => node.name);
+  const nonTriggerNoIncoming = (workflow.nodes || [])
+    .filter((node) => !node.type?.toLowerCase().includes('trigger') && node.type !== 'n8n-nodes-base.webhook')
+    .filter((node) => (graph.incoming[node.name] || 0) === 0)
+    .map((node) => node.name);
+  const potentiallyUnwiredLabels = promptLabels.labels.filter((label) => !['entrega-vivienda'].includes(label));
+  const issues = [];
+
+  if (!workflow.active) issues.push({ severity: 'critical', code: 'workflow_inactive', message: 'El workflow no está activo.' });
+  if (graph.missingTargets.length || graph.missingSources.length) issues.push({ severity: 'critical', code: 'broken_connections', message: 'Hay conexiones con nodos origen/destino inexistentes.' });
+  if (!silence.trueOutputHasRespuestaEscalado || !silence.falseOutputHasNormalPath || silence.hasAutoReset) issues.push({ severity: 'critical', code: 'escalation_silence_broken', message: 'La ruta de silencio/escalamiento no está completamente protegida.' });
+  if (nonTriggerNoIncoming.length) issues.push({ severity: 'medium', code: 'disconnected_nodes', message: `Nodos sin entrada: ${nonTriggerNoIncoming.join(', ')}` });
+  if (potentiallyUnwiredLabels.length) issues.push({ severity: 'low', code: 'labels_need_review', message: `Etiquetas mencionadas en prompt que conviene revisar si están cableadas: ${potentiallyUnwiredLabels.join(', ')}` });
+
+  return {
+    generatedAt: new Date().toISOString(),
+    workflow: {
+      id: workflow.id,
+      name: workflow.name,
+      active: workflow.active,
+      nodeCount: workflow.nodes?.length || 0,
+      updatedAt: workflow.updatedAt,
+      versionId: workflow.versionId,
+      settings: workflow.settings,
+    },
+    graph: { edgeCount: graph.edges.length, missingTargets: graph.missingTargets, missingSources: graph.missingSources, terminalNodes, nonTriggerNoIncoming },
+    criticalPaths: {
+      webhookToIncoming: graph.edges.some((edge) => edge.from === 'Webhook' && edge.to === 'IF incoming'),
+      incomingToAudio: graph.edges.some((edge) => edge.from === 'IF incoming' && edge.to === '¿Audio?'),
+      silence,
+      orderPathPresent: nodeNames.has('IF ORDER_COMPLETE') && nodeNames.has('Generar HTML orden'),
+      escalationPathPresent: nodeNames.has('IF ESCALATE') && nodeNames.has('Etiquetar ESCALATE') && nodeNames.has('Reasignar a agente'),
+      sagiPathPresent: nodeNames.has('¿Token SAGI válido?') && nodeNames.has('GET Clientes SAGI') && nodeNames.has('Buscar nombre en SAGI'),
+    },
+    labels: {
+      promptLabels,
+      wiredLabels: nodeNames.has('IF LABEL entrega_vivienda') && nodeNames.has('Etiquetar entrega_vivienda') ? ['entrega-vivienda -> entrega_vivienda'] : [],
+      potentiallyUnwiredLabels,
+    },
+    externalServices: collectExternalServices(workflow),
+    issues,
+  };
+}
+
 function patchSilence(workflow) {
   const patched = JSON.parse(JSON.stringify(workflow));
   const leer = findNode(patched, 'Leer historial');
@@ -203,6 +311,13 @@ async function main() {
     const file = argValue('--file');
     const workflow = JSON.parse(fs.readFileSync(file, 'utf8'));
     console.log(JSON.stringify(auditSilence(workflow), null, 2));
+    return;
+  }
+
+  if (command === 'audit-workflow') {
+    const file = argValue('--file');
+    const workflow = JSON.parse(fs.readFileSync(file, 'utf8'));
+    console.log(JSON.stringify(auditWorkflow(workflow), null, 2));
     return;
   }
 

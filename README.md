@@ -26,6 +26,7 @@ Copiar `.env.example` en Railway como variables de entorno:
 - `GET /health`: estado del servidor.
 - `GET /agent`: informacion del agente.
 - `GET /lafhia/audit-silence`: auditoria de la regla de bot silenciado.
+- `GET /lafhia/audit-workflow`: auditoria completa de solo lectura del workflow.
 - `POST /lafhia/apply-silence-patch`: aplica el parche seguro de escalamiento. Requiere `Authorization: Bearer AGENT_ADMIN_TOKEN`.
 
 ## Uso local
