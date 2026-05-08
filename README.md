@@ -51,6 +51,24 @@ PATCH_RETENTION_DAYS=365
 MAX_WORKFLOW_SNAPSHOTS=20
 ```
 
+## Auditoria diaria con Railway Cron
+
+Usar un segundo servicio Cron en Railway apuntando a este mismo repositorio.
+Ese servicio debe ejecutar y terminar:
+
+```txt
+npm run daily:audit
+```
+
+Schedule diario sugerido, 8:00 AM Chihuahua / 14:00 UTC:
+
+```txt
+0 14 * * *
+```
+
+El Cron guarda solo resumen de auditoria en Postgres y ejecuta limpieza de retencion.
+No modifica el workflow de n8n y no guarda snapshots completos.
+
 ## Uso local
 
 ```powershell

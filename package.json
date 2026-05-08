@@ -6,6 +6,7 @@
   "description": "Global LAFHIA/LAFHER n8n agent server and Codex skill bundle.",
   "scripts": {
     "start": "node server/index.mjs",
+    "daily:audit": "node server/index.mjs --daily-audit",
     "check": "node server/index.mjs --check && node skills/lafhia-n8n-agent/scripts/lafhia_n8n_client.mjs --help"
   },
   "engines": {

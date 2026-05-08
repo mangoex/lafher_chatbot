@@ -723,7 +723,48 @@ async function handler(req, res) {
   }
 }
 
-if (process.argv.includes('--check')) {
+async function runDailyAudit() {
+  const cfg = config();
+  const workflow = await fetchWorkflow(cfg);
+  const audit = auditWorkflow(workflow);
+  const { hash } = workflowHash(workflow);
+  const cleanup = await cleanupRetention(cfg);
+  const record = await recordAuditEvent(cfg, {
+    action: 'daily_audit',
+    workflowId: workflow.id,
+    workflowName: workflow.name,
+    workflowVersionId: workflow.versionId,
+    workflowHash: hash,
+    success: true,
+    summary: auditSummaryPayload(audit),
+  });
+
+  console.log(JSON.stringify({
+    ok: true,
+    action: 'daily_audit',
+    workflow: {
+      id: workflow.id,
+      name: workflow.name,
+      active: workflow.active,
+      nodeCount: workflow.nodes?.length || 0,
+      versionId: workflow.versionId,
+    },
+    issueCount: audit.issues.length,
+    storage: record,
+    cleanup,
+  }, null, 2));
+}
+
+if (process.argv.includes('--daily-audit')) {
+  try {
+    await runDailyAudit();
+    await dbPool?.end();
+  } catch (error) {
+    console.error(JSON.stringify({ ok: false, error: error.message }, null, 2));
+    await dbPool?.end();
+    process.exitCode = 1;
+  }
+} else if (process.argv.includes('--check')) {
   const cfg = config();
   console.log(JSON.stringify({
     ok: true,
@@ -732,6 +773,7 @@ if (process.argv.includes('--check')) {
     workflowId: cfg.workflowId,
     hasAdminToken: Boolean(cfg.adminToken),
     hasN8nApiKey: Boolean(cfg.n8nApiKey),
+    hasDatabaseUrl: Boolean(cfg.databaseUrl),
   }, null, 2));
 } else {
   const cfg = config();
