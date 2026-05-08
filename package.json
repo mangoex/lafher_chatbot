@@ -1,0 +1,14 @@
+{
+  "name": "lafher-chatbot-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Global LAFHIA/LAFHER n8n agent server and Codex skill bundle.",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "check": "node server/index.mjs --check && node skills/lafhia-n8n-agent/scripts/lafhia_n8n_client.mjs --help"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
