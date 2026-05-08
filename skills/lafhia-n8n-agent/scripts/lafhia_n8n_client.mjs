@@ -222,7 +222,9 @@ async function main() {
     fs.writeFileSync(backup, JSON.stringify(before, null, 2));
     const after = patchSilence(before);
     const summary = changedSummary(before, after);
-    if (summary.changedNodes.join(',') !== 'Leer historial') {
+    const allowedNodeChanges = summary.changedNodes.length === 0
+      || summary.changedNodes.join(',') === 'Leer historial';
+    if (!allowedNodeChanges) {
       throw new Error(`Unexpected changed nodes: ${summary.changedNodes.join(', ')}`);
     }
     if (summary.changedConnectionSources.join(',') !== 'IF bot silenciado') {
