@@ -27,7 +27,29 @@ Copiar `.env.example` en Railway como variables de entorno:
 - `GET /agent`: informacion del agente.
 - `GET /lafhia/audit-silence`: auditoria de la regla de bot silenciado.
 - `GET /lafhia/audit-workflow`: auditoria completa de solo lectura del workflow.
+- `GET /lafhia/audit-workflow?record=true`: guarda resumen de auditoria. Requiere `Authorization: Bearer AGENT_ADMIN_TOKEN`.
+- `POST /lafhia/snapshot`: guarda snapshot sanitizado si el workflow cambio. Requiere `Authorization: Bearer AGENT_ADMIN_TOKEN`.
+- `GET /lafhia/audit-history`: muestra historial reciente. Requiere `Authorization: Bearer AGENT_ADMIN_TOKEN`.
+- `POST /admin/cleanup`: ejecuta limpieza de retencion. Requiere `Authorization: Bearer AGENT_ADMIN_TOKEN`.
 - `POST /lafhia/apply-silence-patch`: aplica el parche seguro de escalamiento. Requiere `Authorization: Bearer AGENT_ADMIN_TOKEN`.
+
+## Retencion de datos
+
+El agente no guarda snapshots completos en cada auditoria. Para cuidar espacio:
+
+- Auditorias normales guardan solo resumen cuando se llama con `record=true`.
+- Snapshots completos se guardan sanitizados y solo si cambia el hash del workflow.
+- Snapshots asociados a parches se conservan por mas tiempo.
+- La limpieza borra auditorias viejas y conserva solo los ultimos snapshots no criticos.
+
+Variables opcionales:
+
+```txt
+DATABASE_URL=railway_postgres_url
+AUDIT_RETENTION_DAYS=90
+PATCH_RETENTION_DAYS=365
+MAX_WORKFLOW_SNAPSHOTS=20
+```
 
 ## Uso local
 
