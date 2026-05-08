@@ -120,25 +120,33 @@ function patchSilence(workflow) {
   const patched = JSON.parse(JSON.stringify(workflow));
   const leer = findNode(patched, 'Leer historial');
   const code = leer.parameters?.jsCode || '';
-  const start = code.indexOf('const labels = wb.body.conversation?.labels || [];');
-  const end = code.indexOf('\n\nreturn [{', start);
-  if (start < 0 || end < 0) {
-    throw new Error('Could not locate silence block in Leer historial');
-  }
-  const oldSegment = code.slice(start, end);
-  if (!oldSegment.includes('labels.includes') || !oldSegment.includes('sd[`bot_silenciado_${conversationId}`] = false')) {
-    throw new Error('Silence block does not match the expected auto-reset pattern');
-  }
+  const hasAutoReset = code.includes('sd[`bot_silenciado_${conversationId}`] = false');
+  const hasPersistentLogic = code.includes("const botSilenciado = labels.includes('escalado')")
+    && code.includes('sd[`bot_silenciado_${conversationId}`]');
 
-  const newSegment = [
-    "const labels = wb.body.conversation?.labels || [];",
-    "// Mantener silencio persistente tras escalamiento. No se limpia por payloads sin label,",
-    "// porque Chatwoot puede enviar eventos incompletos o templates de agente sin labels.",
-    "const botSilenciado = labels.includes('escalado')",
-    "                || sd[`bot_silenciado_${conversationId}`]",
-    "                || false;",
-  ].join('\n');
-  leer.parameters.jsCode = code.slice(0, start) + newSegment + code.slice(end);
+  if (hasAutoReset) {
+    const start = code.indexOf('const labels = wb.body.conversation?.labels || [];');
+    const end = code.indexOf('\n\nreturn [{', start);
+    if (start < 0 || end < 0) {
+      throw new Error('Could not locate silence block in Leer historial');
+    }
+    const oldSegment = code.slice(start, end);
+    if (!oldSegment.includes('labels.includes')) {
+      throw new Error('Silence block does not match the expected labels pattern');
+    }
+
+    const newSegment = [
+      "const labels = wb.body.conversation?.labels || [];",
+      "// Mantener silencio persistente tras escalamiento. No se limpia por payloads sin label,",
+      "// porque Chatwoot puede enviar eventos incompletos o templates de agente sin labels.",
+      "const botSilenciado = labels.includes('escalado')",
+      "                || sd[`bot_silenciado_${conversationId}`]",
+      "                || false;",
+    ].join('\n');
+    leer.parameters.jsCode = code.slice(0, start) + newSegment + code.slice(end);
+  } else if (!hasPersistentLogic) {
+    throw new Error('Silence code is neither old auto-reset nor known persistent form');
+  }
 
   patched.connections ||= {};
   patched.connections['IF bot silenciado'] ||= { main: [] };
@@ -238,4 +246,3 @@ main().catch((error) => {
   console.error(error.message);
   process.exit(1);
 });
-
